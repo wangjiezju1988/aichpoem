@@ -71,23 +71,18 @@ class Evaluate(Callback):
         cptype = newsdata['input'].iloc[idx].split('&&')[1]
         print('格式：', cptype if cptype !='上联' else '对联')
         print('输入：', newsdata['input'].iloc[idx].split('&&')[0])
-    if self.type == 'coupletpoem':
-      cptypes = ['七言律诗','五言律诗','浣溪沙','鹧鸪天','蝶恋花','菩萨銮']
-      titles = ['春日','夏荷','秋菊','冬梅']
-      title = np.random.choice(titles)
-      for item in cptypes:
-        print('格式：', item)
-        print('输入：', title)
         try:
-          if item in ['五言绝句','七言绝句','五言律诗','七言律诗']:
-            res = poem_gen_sent(self.model, title + '&&' + item)
+          if cptype == '上联':
+            res = couplet_gen_sent(self.model, newsdata['input'].iloc[idx][:maxlen])
+          elif cptype in ['五言绝句','七言绝句','五言律诗','七言律诗','五言绝句_藏头诗','七言绝句_藏头诗','五言律诗_藏头诗','七言律诗_藏头诗']:
+            res = poem_gen_sent(self.model, newsdata['input'].iloc[idx][:maxlen])
           else:
-            res = ci_gen_sent(self.model, title + '&&' + item)
+            res = ci_gen_sent(self.model, newsdata['input'].iloc[idx][:maxlen])
+          print('输出：', newsdata['output'].iloc[idx])
           print('预测：', res)
         except Exception as e:
           traceback.print_exc()
           print(e)
-        print('-----------------')
 ```
 
 RTX2080Ti下大概训练一天左右，loss降到3.5以下，模型已经基本上能学会写诗了，包含不同格律诗的长度及押韵
