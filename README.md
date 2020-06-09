@@ -53,7 +53,7 @@
 经过预处理，大概统计了一下，古诗有70多万首，对应的藏头诗也有70多万首，藏头诗对应的主题不一定取所有字，可以随机取前几个字，词有3万多首，对联有70万副，上下联对调可以扩增到140万副。由于词牌比较少，需要做数据增强，我用tfidf + textrank算法对每首词取top10个主题词作为输入，对应的词内容还是不变，这样扩增到30多万首左右，总共310万的数据集。
 
 ### 写诗模型搭建
-写诗模型采用苏建林老师的[bert4keras](https://github.com/bojone/bert4keras/tree/master/)的[seq2seq](https://github.com/bojone/bert4keras/blob/master/examples/task_seq2seq_autotitle.py), 采用[RoBerta_wwm_ext](https://github.com/ymcui/Chinese-BERT-wwm)预训练模型进行训练，对应好古诗数据集的输入输出就可以训练模型了。
+写诗模型采用苏剑林老师的[bert4keras](https://github.com/bojone/bert4keras/tree/master/)的[seq2seq](https://github.com/bojone/bert4keras/blob/master/examples/task_seq2seq_autotitle.py), 采用[RoBerta_wwm_ext](https://github.com/ymcui/Chinese-BERT-wwm)预训练模型进行训练，对应好古诗数据集的输入输出就可以训练模型了。
 
 每训练一个epoch，可以在训练集里随机找三个样本进行测试，评估效果，参考代码如下：
 ```
@@ -485,4 +485,7 @@ if __name__ == "__main__":
 ### 运营推广SEO优化
 未完待续...
 
-
+### 特别鸣谢：
+- [科学空间](https://spaces.ac.cn/)博主苏剑林老师开源[bert4keras](https://github.com/bojone/bert4keras/)
+- Werneror老师开源85万首[古诗词数据集](https://github.com/Werneror/Poetry)
+- 王斌老师开源70万首[对联数据集](https://github.com/wb14123/couplet-dataset)
