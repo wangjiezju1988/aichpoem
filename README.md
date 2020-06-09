@@ -4,15 +4,15 @@
 * 数据集预处理
 * 写诗模型搭建
 * BeamSearch奖惩机制
-* 后端发布
-* 高并发架构
-* 前端开发
+* Flask后端发布
+* Vue前端开发
+* 高并发架构优化
 * 敏感词过滤
 * 运营推广SEO优化
 
 ### 数据集预处理
 
-数据集采用了[Werneror收集的85万古诗词](https://github.com/Werneror/Poetry)，预处理格式如下：
+数据集采用了[Werneror收集的85万古诗词](https://github.com/Werneror/Poetry)， [王斌收集的70万首对联](https://github.com/wb14123/couplet-dataset) 预处理格式如下：
 
 需要自己写个程序判断一下古诗词输入什么格律或词牌, 并转换成如下格式保存到csv文件
 
@@ -25,8 +25,7 @@
 词牌： 浣溪沙、鹧鸪天、蝶恋花、西江月、清平乐、菩萨銮、点绛唇、念奴娇、满江红、浪淘沙等  
 对联： 上联  
 
-例子：
-
+#### 例子：
 输入：相思&&五言绝句  
 输出：红豆生南国，春来发几枝。愿君多采撷，此物最相思。
 
@@ -279,8 +278,211 @@ def couplet_gen_sent(self, model, tokenizer, s, topk=2):
     return tokenizer.decode(target_ids[np.argmax(target_scores)])
 ```
 
+### Flask后端发布
+训练模型的时候建议每个epoch保存最优的权重参数到.weight文件，训练结束后可以读取最优的weight权重参数，然后保存h5文件。注意保存h5文件前千万不要对模型进行编译，要不然保存的h5文件会非常大，本来300多M的文件，编译之后会达到1个多G，实际线上预测的时候也不会用到模型编译，所以只要保存网络结构和权重参数到h5就用可以了，大小只会比.weight权重文件稍微大一点。当然你也可以不保存h5文件，直接初始化模型并加载权重参数，但是这样会预加载两次权重参数，第一个是预训练的权重参数，第二个是自己训练的权重参数，比较慢，而且代码也比较长，所有最优建议还是保存到h5文件比较好。
+
+保存之后，就可以把模型初始化和预测代码封装到一个类里面，这样对发布代码也比较比较精简，下面的代码兼容了bert4keras的其他应用，供参考，实际如果只写诗，可以更精简一点。
+
+```
+class BertUtil:
+  def __init__(self):
+    self.modelobj = {}
+    self.tokenizerobj = {}
+    print('bert util init succeed!')
+    
+  def init_seq2seq_token(self, premodel, type, level='seq2seq'):
+    token_dict = {}
+    keep_words = []
+    seq2seq_config = seq2seq_config_base %(premodel, level, type)
+    config_path, checkpoint_path, dict_path, do_lower_case = getconfig(premodel)
+
+    _token_dict = load_vocab(dict_path)  # 读取词典
+    _tokenizer = Tokenizer(_token_dict, do_lower_case=do_lower_case)  # 建立临时分词器
+
+    if type in ['cmrc','infoexts2s','kbqa','mathp']:
+      newdict = False
+    else:
+      newdict = True
+
+    if newdict == True:
+      if os.path.exists(seq2seq_config):
+        tokens = json.load(open(seq2seq_config))
+        print('load config %s succeed!' %(seq2seq_config))
+      else:
+        exit('invalid config %s' %(seq2seq_config))
 
 
+      for t in ['[PAD]', '[UNK]', '[CLS]', '[SEP]']:
+        token_dict[t] = len(token_dict)
+        keep_words.append(_token_dict[t])
 
+      for t in tokens:
+        if t in _token_dict and t not in token_dict:
+          token_dict[t] = len(token_dict)
+          keep_words.append(_token_dict[t])
+    else:
+      for t in ['[PAD]', '[UNK]', '[CLS]', '[SEP]']:
+        token_dict[t] = len(token_dict)
+        keep_words.append(_token_dict[t])
+
+      for t, _ in sorted(_token_dict.items(), key=lambda s: s[1]):
+        if t not in token_dict:
+          if len(t) == 3 and (Tokenizer._is_cjk_character(t[-1])
+                              or Tokenizer._is_punctuation(t[-1])):
+            continue
+          token_dict[t] = len(token_dict)
+          keep_words.append(_token_dict[t])
+
+    tokenizer = Tokenizer(token_dict, do_lower_case=do_lower_case)  # 建立分词器
+    return tokenizer, keep_words
+    
+  def init_seq2seq(self, premodel='roberta', type='coupletpoem'):
+    level = 'seq2seq'
+    modeltype = modeltype_base %(level, type)
+    self.tokenizerobj[modeltype], keep_words = self.init_seq2seq_token(premodel, type)
+    modelfile = modelfile_h5_base %(premodel, level, type)
+    if os.path.exists(modelfile):
+      #self.modelobj[modeltype].load_weights(modelfile)
+      self.modelobj[modeltype] = load_model(modelfile)
+      print('load model %s succeed!' %(modelfile))
+    else:
+      exit("invalid model %s!" %(modelfile))
+      
+  def predict_seq2seq(self, type='medicalqa', text='', topk=1, printflag=True):
+    modeltype = modeltype_base %('seq2seq', type)
+    if printflag:
+      print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), type, 'topk:', topk)
+    if type == 'coupletpoem':
+      text = text.replace('##','&&')
+      if '&&' not in text:
+        text = text + '&&七言律诗'
+      cptype = text.split('&&')[1]
+      if cptype == '上联':
+        text = text.replace(' ','，').replace('。','')
+        if topk <= 3:
+          result = self.couplet_gen_sent(self.modelobj[modeltype], self.tokenizerobj[modeltype], text, topk=topk)
+        else:
+          result = self.couplet_gen_sent_random(self.modelobj[modeltype], self.tokenizerobj[modeltype], text, topk=topk)
+        if printflag:
+          print('上联：%s' %(text.split('&&')[0]))
+          print('下联：%s' %(result))
+      elif cptype in ['五言绝句','七言绝句','五言律诗','七言律诗','五言绝句_藏头诗','七言绝句_藏头诗','五言律诗_藏头诗','七言律诗_藏头诗']:
+        if topk <= 3:
+          result = self.poem_gen_sent(self.modelobj[modeltype], self.tokenizerobj[modeltype], text, topk=topk)
+        else:
+          result = self.poem_gen_sent_random(self.modelobj[modeltype], self.tokenizerobj[modeltype], text, topk=topk)
+        result = result.replace('。','。\n')
+        if printflag:
+          print(text.split('&&')[0], text.split('&&')[1])
+          print(result)
+      else:
+        if topk <= 3:
+          result = self.ci_gen_sent(self.modelobj[modeltype], self.tokenizerobj[modeltype], text, topk=topk)
+        else:
+          result = self.ci_gen_sent_random(self.modelobj[modeltype], self.tokenizerobj[modeltype], text, topk=topk)
+        result = result.replace('。','。\n')
+        if printflag:
+          print(text.split('&&')[0], text.split('&&')[1])
+          print(result)
+    else:
+      result = self.gen_sent(self.modelobj[modeltype], self.tokenizerobj[modeltype], text, topk=topk)
+    return result
+```
+
+封装成类之后，就可以通过flask发布了
+```
+#!/usr/bin/env python3
+#-*- coding:utf-8 -*-
+
+import os,sys
+import json
+import datetime
+import time
+#from io import BytesIO
+from flask import Flask, request
+#from gevent.wsgi import WSGIServer
+
+#from gevent.pywsgi import WSGIServer
+#from multiprocessing import cpu_count, Process
+#from impala.dbapi import connect
+import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
+
+os.environ['CUDA_VISIBLE_DEVICES']='0' # 指定GPU 0
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.08 
+config.gpu_options.allow_growth = True
+set_session(tf.Session(config=config))
+
+print('server start...')
+
+
+from bertutil import BertUtil
+
+#flask app
+app = Flask(__name__)
+
+# BERTUTIL
+bertutil = BertUtil()
+bertutil.init_seq2seq(premodel='roberta',type='coupletpoem')
+print('-----------BERT SEQ2SEQ初始化完毕------------')
+
+# seq2seq请求
+@app.route("/zqcloudapi/v1.0/nlp/bertseq2seq", methods=['GET','POST'])
+def bertseq2seq():
+  start =time.time()
+  data = request.values['data'] if 'data' in request.values else '虎啸青山抒壮志&&上联'
+  type = request.values['type'] if 'type' in request.values else 'coupletpoem'
+  topk = int(request.values['topk']) if 'topk' in request.values else 1
+  r = bertutil.predict_seq2seq(type=type, text=data, topk=topk)
+  end = time.time()
+  res={}
+  res['result'] = r
+  res['timeused'] = int(1000 * (end - start))
+  print('使用时间：%sms\n---------' %(res['timeused']))
+  return json.dumps(res)
+
+# 跨域支持
+def after_request(resp):
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
+
+@app.after_request
+def cors(environ):
+  environ.headers['Access-Control-Allow-Origin']='*'
+  environ.headers['Access-Control-Allow-Method']='*'
+  environ.headers['Access-Control-Allow-Headers']='x-requested-with,content-type'
+  return environ
+
+def start_web_server(host='0.0.0.0', port=11456):
+  print('listen %s:%s' %(host, port))
+  app.run(host, port)
+
+if __name__ == "__main__":
+  start_web_server()
+
+```
+
+### Vue前端开发
+前端最原始的就是html + css + js, 随着技术的发展，出现了bootstrap，vue, react等框架，这里采用Vue框架用于前端开发。前端主要的功能就是把用户输入通过ajax传给后端，后端计算后并返回给前端展示，这里就不在详细介绍了，有问题的同学可以自己补习了前端相关知识。
+
+### 高并发架构优化
+
+未完待续...
+
+### 敏感词过滤
+在大陆上线带文本输入的AI产品，这一步非常重要，秉着宁可错杀1000，也尽量不要遗漏一个的原则，要不然容易被请去喝茶，请自重！   
+
+如果有钱的话可以直接调用[百度文本审核API](https://ai.baidu.com/tech/textcensoring)，这个大概1.5分一条，个人实名认证可以赠送5万条，企业实名认证可以赠送50万条，由于我多的时候每天有10w+次请求，这点赠送量是不够的，下面是我做敏感词过滤的几道防线，供参考：   
+
+1、国家现核心领导人前领导人名字及其他核心敏感词拼音级过滤，如果用汉字，如细净瓶，吸金瓶等等，字太多很难遍历全；      
+2、国家现核心领导人前领导人名字及其他核心敏感词包含过滤，只要输入的文本里面出现这几个字，无论什么顺序，中间夹杂了多少个字全部过滤，如习惯平易近人，习惯禁止评论，长江恩泽于民众等等   
+3、某些相近的字也需要过滤，如习和刁等    
+4、国家核心领导人去过的某些地方，吃过的某些东西，说过的某些话，做过的某些事情及长的像的某些东西等等都要过滤，比如庆丰包子，蛤膜，维尼熊等等    
+5、根据第三方开源的[敏感词库](https://github.com/fighting41love/funNLP/tree/master/data/%E6%95%8F%E6%84%9F%E8%AF%8D%E5%BA%93)进行过滤    
+6、调用百度文本审核API标注日志中的文本，并用albert训练自己的敏感词识别模型    
+
+### 运营推广SEO优化
+未完待续...
 
 
