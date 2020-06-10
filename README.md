@@ -517,8 +517,14 @@ if __name__ == "__main__":
 - 王斌老师开源70万首[对联数据集](https://github.com/wb14123/couplet-dataset)
 
 ### AI写诗词对联相关网站链接：
-诗三百·人工智能诗歌写作平台：   https://www.aichpoem.com/  
-清华九歌·人工智能诗歌写作系统： http://jiuge.thunlp.org/jueju.html  
-华为乐府·人工智能作诗小程序：   微信公众号搜索 “乐府AI”  
-微软小冰·AI现代诗歌创作系统：   https://poem.msxiaobing.com/  
+- 诗三百·人工智能诗歌写作平台：   https://www.aichpoem.com/  
+- 清华九歌·人工智能诗歌写作系统： http://jiuge.thunlp.org/jueju.html  
+- 华为乐府·人工智能作诗小程序：   微信公众号搜索 “乐府AI”  
+- 微软小冰·AI现代诗歌创作系统：   https://poem.msxiaobing.com/  
+- 微软亚洲研究院·电脑对联系统：   https://duilian.msra.cn/app/couplet.aspx
+- 王斌·人工智能自动对对联系统：   https://ai.binwang.me/couplet/
+
+### 合作建议：
+QQ:  540629297   
+E-mail: wangjiezju@163.com
 
