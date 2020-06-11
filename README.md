@@ -427,7 +427,7 @@ bertutil.init_seq2seq(premodel='roberta',type='coupletpoem')
 print('-----------BERT SEQ2SEQ初始化完毕------------')
 
 # seq2seq请求
-@app.route("/poemapi/v1.0/nlp/bertseq2seq", methods=['GET','POST'])
+@app.route("/zqcloudapi/v1.0/nlp/bertseq2seq", methods=['GET','POST'])
 def bertseq2seq():
   start =time.time()
   data = request.values['data'] if 'data' in request.values else '虎啸青山抒壮志&&上联'
@@ -462,11 +462,11 @@ if __name__ == "__main__":
 
 ```
 
-这里用0.0.0.0:11456端口监听，如果需要让其他的客户端用ip访问，监听host需要是0.0.0.0，不能是127.0.0.1，否则只能本地访问，可以用netstat查看服务是否启动成功
+保存文件名为server_poem.py, 用python3 server_poem.py就可以启动了， 服务用0.0.0.0:11456端口监听，如果需要让其他的客户端用ip访问，监听host需要是0.0.0.0，不能是127.0.0.1，否则只能本地访问，可以用netstat查看服务是否启动成功
 ```
 netstat -nlp|grep 11456
 ```
-启动成功后，就可以通过浏览器或客户端脚本访问 http://ip:11456/poemapi/v1.0/nlp/bertseq2seq 并传入参数返回结果
+启动成功后，就可以通过浏览器或客户端脚本访问 http://ip:11456/zqcloudapi/v1.0/nlp/bertseq2seq 并传入参数返回结果
 
 ### Vue前端开发
 前端最原始的就是html + css + js, 随着技术的发展，出现了bootstrap，vue, react等框架，这里采用Vue框架用于前端开发。前端主要的功能就是给用户提供良好的人机交互界面，把用户输入的主题通过ajax或fetch传给后端，后端计算后并返回给前端展示，这里就不在详细介绍了，有问题的同学可以自己补习了前端相关知识，不是太复杂。
@@ -498,7 +498,7 @@ fetch(url, {
 
 1、服务器
 
-本项目采用了阿里云服务器，由于写诗模型是用RoBerta seq2seq训练的，权重模型大概有300多兆，使用CPU跑特别慢，在不考虑并发的情况下光写一首诗大概就要好5-9秒，一般用户最大的耐心是3s左右，如果超过3s，网站的体验效果就比较差了，有些用户也不一定有耐心继续往下等，可能就直接关掉了，所以必须使用GPU服务器来跑写诗模型。但是阿里云的GPU服务器特别贵，一块8G显存的Nvidia P4显卡就要8万一年左右，成本太高，可以买配置不错的多卡物理机了。所以这里采用本地GPU物理机来跑写诗模型，在Nvidia RTX2080Ti不考虑并发的条件下，平均单次写诗时间在300-600ms左右，但是本地物理机没有公网IP，云服务器无法直接访问，这里采用了[autossh反向代理穿透到内网](https://www.jianshu.com/p/7accc1e485d3
+本项目采用了阿里云服务器，由于写诗模型是用RoBerta seq2seq训练的，权重模型大概有300多兆，使用CPU跑特别慢，在不考虑并发的情况下光写一首诗大概就要好5-9秒，一般用户最大的耐心是3s左右，如果超过3s，网站的体验效果就比较差了，有些用户也不一定有耐心继续往下等，可能就直接关掉了，所以必须使用GPU服务器来跑写诗模型。但是阿里云的GPU服务器特别贵，一块8G显存的Nvidia P4显卡就要8万一年左右，成本太高，可以买配置不错的多卡物理机了，不过土豪可以忽略。所以这里采用本地GPU物理机来跑写诗模型，在Nvidia RTX2080Ti不考虑并发的条件下，平均单次写诗时间在300-600ms左右，但是本地物理机没有公网IP，云服务器无法直接访问，这里采用了[autossh反向代理穿透到内网](https://www.jianshu.com/p/7accc1e485d3
 )，把本地GPU服务器的端口映射到云服务器上，这样云服务器就可以访问本地物理机端口服务了。
 
 ```
@@ -509,9 +509,10 @@ autossh -M 5686 -fCNR *:8888:localhost:11456 user@xxx.xxx.xxx.xxx
 2、模型
 
 从模型角度优化时间，可以从两块进行考虑，一块选择较小的模型，另一块对BeamSearch进行优化，下面详细介绍：  
-> 目前选择的预训练模型是RoBERTa, 如果需要缩短时间，可以选择albert, RoBERTa-small, RoBERTa-tiny, 我用RoBERTa-small尝试了一下，预测时间和权重文件缩小了一倍，并发可以提升四倍，但是我让我诗词界的朋友看了一下写诗质量，下降太多，我就放弃了，还是选择RoBERTa来训练写诗模型；   
 
-> 另一块就是seq2seq的BeamSearch优化，模型生成诗是一个字一个字预测的，每次用Topk个候选集预测，再选择当前最优的Topk个候选集作为下一次预测的输入，直到碰到截止符为止，所以TopK越大，相应的预测时间就越长，生成诗的质量也相对会好一点，但是不绝对。总得来说通过BeamSearch生成的诗质量相对好一点，但是比较单一，多样性比较差。所以我想了一个办法，每次从topk里面按loss概率分布随机选一个值，作为下一次预测的输入，这样作诗时间就不会受topk的影响，同时增加了生成古诗的多样性。我个人感觉挺好，我把生成的诗给我诗词界的朋友又看了一下，他说作诗质量不如之前的好，我问他你喜欢之前的还是现在多样性丰富的作诗机，他说他还是更看重作诗的质量。这时，我苦恼了，不知道怎么权衡好，因为之前beamsearch的topk大于8时，时间会到达好几秒，不仅影响用户体验，同时增加服务器压力，减少并发能力。有一天晚上，我突然灵机一动，想到了一个折中的方法，就是前端输入的topk小于等于3时，采用传统的beamsearch生成古诗；当大于3时，采用第二种随机选择的方法。这样既能保证作诗质量，同时能增加生成古诗的多样性，而且还不会太多增加单次作诗的平均时间，保证作诗网站的并发能力。
+目前选择的预训练模型是RoBERTa, 如果需要缩短时间，可以选择albert, RoBERTa-small, RoBERTa-tiny, 我用RoBERTa-small尝试了一下，预测时间和权重文件缩小了一倍，并发可以提升四倍，但是我让我诗词界的朋友看了一下写诗质量，下降太多，我就放弃了，还是选择RoBERTa来训练写诗模型；    
+
+另一块就是seq2seq的BeamSearch优化，模型生成诗是一个字一个字预测的，每次用Topk个候选集预测，再选择当前最优的Topk个候选集作为下一次预测的输入，直到碰到截止符为止，所以TopK越大，相应的预测时间就越长，生成诗的质量也相对会好一点，但是不绝对。总得来说通过BeamSearch生成的诗质量相对好一点，但是比较单一，多样性比较差。所以我想了一个办法，每次从topk里面按loss概率分布随机选一个值，作为下一次预测的输入，这样作诗时间就不会受topk的影响，同时增加了生成古诗的多样性。我个人感觉挺好，我把生成的诗给我诗词界的朋友又看了一下，他说作诗质量不如之前的好，我问他你喜欢之前的还是现在多样性丰富的作诗机，他说他还是更看重作诗的质量。这时，我苦恼了，不知道怎么权衡好，因为之前beamsearch的topk大于8时，时间会到达好几秒，不仅影响用户体验，同时增加服务器压力，减少并发能力。有一天晚上，我突然灵机一动，想到了一个折中的方法，就是前端输入的topk小于等于3时，采用传统的beamsearch生成古诗；当大于3时，采用第二种随机选择的方法。这样既能保证作诗质量，同时能增加生成古诗的多样性，而且还不会太多增加单次作诗的平均时间，保证作诗网站的并发能力。  
 
 ```
 if topk <= 3:
@@ -521,13 +522,87 @@ else:
 ```
 
 3、后端
+由于python flask多线程效率很低，采用gunicron多进程提升并发性能，可以创建一个shell脚本文件server_poem.sh
+```
+gunicorn -w $1 -b 0.0.0.0:11456 server_poem:app
+```
+执行
+```
+sh server_poem.sh 9
+```
+就可以启动服务了，9是进程数量，由于每个进程都是独立占用显存的，具体进程数多少需要看单个进程占用的显存及显卡总显存大小，总之所有进程占用的显存加起来不能超过总显存。   
 
+如果本地有多台GPU服务器，可以通过[程序文件共享](https://www.cnblogs.com/woxbwo/p/11581826.html)，再用上面的方法各自开服务，然后通过autossh 映射到云服务器不同的端口，云服务器再通过nginx做负载均衡，比如本来有三台GPU服务器，  
+
+| 服务器 | 本地监听端口  | 反向代理穿透脚本 | 云服务器访问端口 |
+| - | - | - | - |
+| GPU服务器1 | 0.0.0.0:11456 | autossh -M 5686 -fCNR \*:8888:localhost:11456 user@xxx.xxx.xxx.xxx | 127.0.0.1:8888 |      
+| GPU服务器2 | 0.0.0.0:11456  | autossh -M 5686 -fCNR \*:8889:localhost:11456 user@xxx.xxx.xxx.xxx | 127.0.0.1:8889 |
+| GPU服务器3 | 0.0.0.0:11456  | autossh -M 5686 -fCNR \*:8890:localhost:11456 user@xxx.xxx.xxx.xxx | 127.0.0.1:8890 |
+
+这样三台本地GPU服务器的服务，就通过反向代理穿透映射到云服务器8888,8889,8890三个端口上，但是对用户来说，到底应该访问哪个端口呢？别急，下面可以用nginx做负载均衡
+
+```
+upstream poemapi.com {
+    server 127.0.0.1:8888 weight=1;
+    server 127.0.0.1:8889 weight=4;
+    server 127.0.0.1:8890 weight=2;
+}
+
+server {
+    listen 12575;
+    server_name _;
+    location / {
+        proxy_pass http://poemapi.com/zqcloudapi/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header REMOTE-HOST $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+如果本地三台GPU服务器的显卡性能，开得进程数量不一样，可能根据实际情况设置不同的权重，性能好的weight可以大一点。完成上述配置，重启nginx服务，就可以在云服务器访问 127.0.0.1:12575 对三台本地GPU服务器的服务做负载均衡了。
 
 
 4、接口
+由于某些热门主题会被不同的用户重复请求，如果每次都重复计算的话，会占用大量的GPU服务器资源，所以这里引入了redis来保存已生成的诗，为了让做的诗有多样性，这里没有永久保存，只保存了一天，保存KEY为coupletpoem_input_topk, 其中input和topk为前端输入。
+
+再由于python的效率很低，就是不做任务处理，python flask的并发请求效率也不高，所以最后只让python flask专业做写诗的事情，其他鸡毛蒜皮琐事的事情就不用python管了，这里引入异步非阻塞的node来面向前端做接口，当然也可以用java，本人只是觉得java比较重，就选择了轻量级的node，没有复杂业务逻辑的并发性能也不亚于java。node接口判断的业务逻辑也很简单，首先判断redis里面有没有值，有值就直接返回给前端，没有值调用上面负载均衡映射的python flask API生成诗词，返回给前端并保存到redis，同时把请求日志放到队列，由另外一个独立的线程定时专门把业务请求日志存储到mongodb数据库。
 
 5、前端
 
+前端同一个用户同一个主题同一个topk可能会请求多次，为了减少后端的压力，前端可以把请求到的结果存储到localstorge里面，存储周期根据实际场景设定，这里设了一个小时，这样第二次请求的时候，直接从localstorage取数据既可以，这个功能可以封装在接口程序里，参考如下：
+
+```
+export const getServerData = (url, method, object, period, callback, errcallback) => {
+  url = Config.host + url;
+  const key = md5(url + method + JSON.stringify(object));
+  // 判断本地localstorage数据是否有效
+  const data = getDataFromLocalStorage(key, period);
+  if (!data) {
+    getData(url, method, object, text => {
+      const resultobj = JSON.parse(text);
+      // console.log(resultobj);
+      if (resultobj.errcode === 0) {
+        if (period > 0) {
+          resultobj.result.time = new Date().getTime(); // 添加当前时间
+          localStorageUtil.save(key, resultobj.result);
+        }
+        callback(resultobj.result);
+      } else {
+        // console.log('业务逻辑异常:', resultobj.errmsg);
+        errcallback('业务逻辑异常: ' + resultobj.errmsg);
+      }
+    }, err => {
+      errcallback(err);
+    });
+  }
+  else {
+    callback(data);
+  }
+};
+```
+如果这个接口明文传输的话，可能会被第三方的爬虫脚本盯上，大大增加服务器的压力，影响前端的写诗性能。所以需要对接口的参数和返回结果进行加密，比如参数可以采用AES加密，返回结果可以采用base64 + AES + DES多级加密，每个的key和iv都可以不一样，提升破解难点。
 
 ### 敏感词过滤
 在大陆上线带文本输入的AI产品，这一步非常重要，秉着宁可错杀1000，也尽量不要遗漏一个的原则，要不然容易被请去喝茶，请自重！   
