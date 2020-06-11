@@ -232,7 +232,6 @@ def couplet_gen_sent(self, model, tokenizer, s, topk=2):
         _probas = model.predict([_target_ids, _segment_ids
                                  ])[:, -1, 4:]  # 直接忽略[PAD], [UNK], [CLS]
         _log_probas = np.log(_probas + 1e-6)  # 取对数，方便计算
-
         _arg = _log_probas.argsort(axis=1)[:, -64:]
 
         for j in range(topk):
@@ -491,23 +490,23 @@ fetch(url, {
 
 上面前后端已经实现了完整的功能，在本地自己部署自己用用已经没有问题了，但是部署到云服务器上，给几百成千甚至上万的用户用，并发瓶颈就出来了，甚至会导致服务器卡死宕机， 下面分别从服务器，模型，后端，接口，前端介绍一下优化的过程：
 
-> 服务器
+1、服务器
 
 本项目采用了阿里云服务器，由于写诗模型是用RoBerta seq2seq训练的，权重模型大概有300多兆，使用CPU跑特别慢，在不考虑并发的情况下光写一首诗大概就要好5-9秒，一般用户最大的耐心是3s左右，如果超过3s，网站的体验效果就比较差了，有些用户也不一定有耐心继续往下等，可能就直接关掉了，所以必须使用GPU服务器来跑写诗模型。但是阿里云的GPU服务器特别贵，一块8G显存的Nvidia P4显卡就要8万一年左右，成本太高，可以买配置不错的多卡物理机了。所以这里采用本地GPU物理机来跑写诗模型，但是本地物理机没有公网IP，云服务器无法直接访问，这里采用了[autossh反向代理穿透到内网](https://www.jianshu.com/p/7accc1e485d3
 )，把本地GPU服务器的端口映射到云服务器上，这样云服务器就可以访问本地物理机端口服务了。
 
 ```
-autossh -M 5686 -fCNR *:11457:localhost:11456 user@xxx.xxx.xxx.xxx
+autossh -M 5686 -fCNR *:8888:localhost:11456 user@xxx.xxx.xxx.xxx
 ```
->> 其中，xxx.xxx.xxx.xxx 是云服务器的ip，user是用户账号， 11457是云服务器访问端口，11456是本地GPU服务器flask监听的端口
+> 其中，xxx.xxx.xxx.xxx 是云服务器的ip，user是用户账号， 8888是云服务器访问端口，可以自行设定，11456是本地GPU服务器flask监听的端口，这样就可以在云服务器上通过访问 127.0.0.1:8888既可以访问本地GPU服务器flask发布的11456服务
 
-> 模型
+2、模型
 
-> 后端
+3、后端
 
-> 接口
+4、接口
 
-> 前端
+5、前端
 
 
 ### 敏感词过滤
