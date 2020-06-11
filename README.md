@@ -388,7 +388,7 @@ class BertUtil:
     return result
 ```
 
-封装成类之后，就可以通过flask发布了
+封装成类之后，就可以通过flask发布了，
 ```
 #!/usr/bin/env python3
 #-*- coding:utf-8 -*-
@@ -427,7 +427,7 @@ bertutil.init_seq2seq(premodel='roberta',type='coupletpoem')
 print('-----------BERT SEQ2SEQ初始化完毕------------')
 
 # seq2seq请求
-@app.route("/zqcloudapi/v1.0/nlp/bertseq2seq", methods=['GET','POST'])
+@app.route("/poemapi/v1.0/nlp/bertseq2seq", methods=['GET','POST'])
 def bertseq2seq():
   start =time.time()
   data = request.values['data'] if 'data' in request.values else '虎啸青山抒壮志&&上联'
@@ -461,6 +461,12 @@ if __name__ == "__main__":
   start_web_server()
 
 ```
+
+这里用0.0.0.0:11456端口监听，如果需要让其他的客户端用ip访问，监听host需要是0.0.0.0，不能是127.0.0.1，否则只能本地访问，可以用netstat查看服务是否启动成功
+```
+netstat -nlp|grep 11456
+```
+启动成功后，就可以通过浏览器或客户端脚本访问 http://ip:11456/poemapi/v1.0/nlp/bertseq2seq 并传入参数返回结果
 
 ### Vue前端开发
 前端最原始的就是html + css + js, 随着技术的发展，出现了bootstrap，vue, react等框架，这里采用Vue框架用于前端开发。前端主要的功能就是给用户提供良好的人机交互界面，把用户输入的主题通过ajax或fetch传给后端，后端计算后并返回给前端展示，这里就不在详细介绍了，有问题的同学可以自己补习了前端相关知识，不是太复杂。
