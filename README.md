@@ -466,21 +466,97 @@ if __name__ == "__main__":
 ### Vue前端开发
 前端最原始的就是html + css + js, 随着技术的发展，出现了bootstrap，vue, react等框架，这里采用Vue框架用于前端开发。前端主要的功能就是给用户提供良好的人机交互界面，把用户输入的主题通过ajax或fetch传给后端，后端计算后并返回给前端展示，这里就不在详细介绍了，有问题的同学可以自己补习了前端相关知识，不是太复杂。
 
+
 ### 高并发架构优化
 
-未完待续...
+上面前后端已经实现了完整的功能，在本地自己部署自己用用已经没有问题了，但是部署到云服务器上，给几百成千甚至上万的用户用，瓶颈就出来了，所以下面要详细介绍一下
+
 
 ### 敏感词过滤
 在大陆上线带文本输入的AI产品，这一步非常重要，秉着宁可错杀1000，也尽量不要遗漏一个的原则，要不然容易被请去喝茶，请自重！   
 
 如果有钱的话可以直接调用[百度文本审核API](https://ai.baidu.com/tech/textcensoring)，这个大概1.5分一条，个人实名认证可以赠送5万条，企业实名认证可以赠送50万条，由于我多的时候每天有10w+次请求，这点赠送量是不够的，下面是我做敏感词过滤的几道防线，供参考：   
 
-1、国家现核心领导人前领导人名字及其他核心敏感词拼音级过滤，如果用汉字，如细净瓶，吸金瓶等等，字太多很难遍历全；      
+1、国家现核心领导人前领导人名字及其他核心敏感词拼音级过滤，如果用汉字，如细净瓶，吸金瓶等等，字太多很难遍历全； 
+
+> npm 有拼音库，安装后可以直接调用，把汉字转换成拼音，详见[NPM汉字拼音转换工具](https://www.npmjs.com/package/pinyin)介绍。
+```
+npm install pinyin
+```
+
 2、国家现核心领导人前领导人名字及其他核心敏感词包含过滤，只要输入的文本里面出现这几个字，无论什么顺序，中间夹杂了多少个字全部过滤，如习惯平易近人，习惯禁止评论，长江恩泽于民众等等   
 3、某些相近的字也需要过滤，如习和刁等    
 4、国家核心领导人去过的某些地方，吃过的某些东西，说过的某些话，做过的某些事情及长的像的某些东西等等都要过滤，比如庆丰包子，蛤膜，维尼熊等等    
-5、根据第三方开源的[敏感词库](https://github.com/fighting41love/funNLP/tree/master/data/%E6%95%8F%E6%84%9F%E8%AF%8D%E5%BA%93)进行过滤    
-6、定期调用百度文本审核API标注日志中的样本，并用albert训练自己的敏感词二分类识别模型    
+5、根据第三方开源的[敏感词库](https://github.com/fighting41love/funNLP/tree/master/data/%E6%95%8F%E6%84%9F%E8%AF%8D%E5%BA%93)进行过滤 
+6、定期调用百度文本审核API标注日志中的样本，并用albert训练自己的敏感词二分类识别模型，不需要GPU，可以在云服务器的CPU上跑，每条文本大概6-7s左右，判别过的就可以放到Redis缓存里，不需要重复判断。
+
+上述前五条都可以在前端完成，第六条需要在后端完成，前端过滤代码参考如下：
+
+```
+export const checkKeys = (text) => {
+  let flag = true;
+  // 根据白名单判断
+  if (keyobj['whitekeys'].indexOf(text) >= 0) {
+    return true;
+  }
+  // 剔除非法字符
+  text = text.replace(/[\s+\-\.\。\，\；\?\？\！\!\…\+\!\@\#\$\%\^\&\*()\（\）\￥\[\]]/g,"");
+  if (words.indexOf(text) >=0) {
+    return false;
+  }
+
+  // 转换成拼音并判断，如果文本中包含核心敏感词的拼音，就返回false
+  let py = pinyin(text, {
+    style: pinyin.STYLE_NORMAL
+  });
+  py = py.join('');
+
+  for (let i = 0; i<pinyins.length; i++) {
+    if (py.indexOf(pinyins[i])>-1) {
+      console.log(text, py, pinyins[i]);
+      return false;
+    }
+  }
+
+  py = pinyin(text);
+  py = py.join('');
+  console.log(py);
+
+  for (let i = 0; i<pinyins2.length; i++) {
+    if (py.indexOf(pinyins2[i])>-1) {
+      console.log(text, py, pinyins2[i]);
+      return false;
+    }
+  }
+
+  // 根据敏感词判断，只要输入文本包含敏感词就返回false
+  for (let i = 0; i < keyobj['keys'].length; i++) {
+    if (text.indexOf(keyobj['keys'][i])>=0) {
+      console.log(text, keyobj['keys'][i]);
+      flag = false;
+      return false;
+    }
+  }
+
+  // 根据核心敏感词判断，只要输入出现敏感词这几个字，不论什么顺序，中间夹了多少个字，都返回false
+  for (let i = 0; i < keyobj['subkeys'].length; i++) {
+    let j = 0;
+    let item = keyobj['subkeys'][i];
+    let newtext = text;
+    for (j = 0; j < item.length; j ++) {
+      if (newtext.indexOf(item[j]) < 0){
+        break;
+      }
+      newtext = newtext.replace(item[j],'');
+    }
+    if (j == item.length) {
+      return false;
+    }
+  }
+  return flag;
+};
+```
+
 
 ### 运营推广SEO优化
 上线之后就可以推广了，首先是在各大诗词群里面推广，然后在贴吧，论坛，知乎，CSDN，豆瓣等平台发帖，大家觉得好玩之后，也会自己在常用的平台上发帖，让更多的人参与进来。  
