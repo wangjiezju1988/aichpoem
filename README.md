@@ -534,20 +534,20 @@ else:
 
 如果有钱的话可以直接调用[百度文本审核API](https://ai.baidu.com/tech/textcensoring)，这个大概1.5分一条，个人实名认证可以赠送5万条，企业实名认证可以赠送50万条，由于我多的时候每天有10w+次请求，这点赠送量是不够的，下面是我做敏感词过滤的几道防线，供参考：   
 
-1、国家现核心领导人前领导人名字及其他核心敏感词拼音级过滤，如果用汉字，如细净瓶，吸金瓶等等，字太多很难遍历全； 
+1、国家现核心领导人前领导人名字及其他核心敏感词拼音级过滤，如果用汉字，如细净瓶，吸金瓶，供惨谠等等，字太多很难遍历全，还是拼音过滤省事一点； 
 
 > npm 有拼音库，安装后可以直接调用，把汉字转换成拼音，详见[NPM汉字拼音转换工具](https://www.npmjs.com/package/pinyin)介绍。
 ```
 npm install pinyin
 ```
 
-2、国家现核心领导人前领导人名字及其他核心敏感词包含过滤，只要输入的文本里面出现这几个字，无论什么顺序，中间夹杂了多少个字全部过滤，如习惯平易近人，习惯禁止评论，长江恩泽于民众等等   
-3、某些相近的字也需要过滤，如习和刁等    
-4、国家核心领导人去过的某些地方，吃过的某些东西，说过的某些话，做过的某些事情及长的像的某些东西等等都要过滤，比如庆丰包子，蛤膜，维尼熊等等    
-5、根据第三方开源的[敏感词库](https://github.com/fighting41love/funNLP/tree/master/data/%E6%95%8F%E6%84%9F%E8%AF%8D%E5%BA%93)进行过滤 
-6、定期调用百度文本审核API标注日志中的样本，并用albert训练自己的敏感词二分类识别模型，不需要GPU，可以在云服务器的CPU上跑，每条文本大概6-7s左右，判别过的就可以放到Redis缓存里，不需要重复判断。
+2、国家现核心领导人前领导人名字及其他核心敏感词包含过滤，只要输入的文本里面出现这几个字，无论什么顺序，中间夹杂了多少个字全部过滤，如习惯平易近人，习惯禁止评论，长江恩泽于民众等等，虽然这样可能会错杀一些输入文本，但是总比遗漏一个请去喝茶要好一点；   
+3、某些相近的字也需要过滤，如习和刁等；   
+4、国家核心领导人去过的某些地方，吃过的某些东西，说过的某些话，做过的某些事情及长的像的某些东西等等都要过滤，比如庆丰包子，蛤膜，维尼熊等等；      
+5、根据第三方开源的[敏感词库](https://github.com/fighting41love/funNLP/tree/master/data/%E6%95%8F%E6%84%9F%E8%AF%8D%E5%BA%93)进行过滤；  
+6、定期调用百度文本审核API标注日志中的样本，并用albert训练自己的敏感词二分类识别模型，不需要GPU，可以在云服务器的CPU上跑，每条文本大概6-7s左右，判别过的就可以放到Redis缓存里，不需要重复判断。具体模型训练方式可以参考苏老师bert4keras的[情感二分类例子](https://github.com/bojone/bert4keras/blob/master/examples/task_sentiment_albert.py)。
 
-上述前五条都可以在前端完成，第六条需要在后端完成，前端过滤代码参考如下：
+上述前五条都可以在前端完成，如果校验不通过直接提示“您输入的主题无法作诗，请重新输入”，不需要增加服务端的压力，前端校验通过后，第六条需要在后端完成，再加一道保险。前端过滤代码参考如下：
 
 ```
 export const checkKeys = (text) => {
@@ -649,12 +649,10 @@ export const checkKeys = (text) => {
 **上联**：望江楼上望江流，江楼千古，江流千古  
 **下联**：观海岛中观海涌，海岛万家，海涌万家
 
-### 特别鸣谢：
-- [科学空间](https://spaces.ac.cn/)博主苏剑林老师开源[bert4keras](https://github.com/bojone/bert4keras/)
-- Werneror老师开源85万首[古诗词数据集](https://github.com/Werneror/Poetry)
-- 王斌老师开源70万首[对联数据集](https://github.com/wb14123/couplet-dataset)
 
-### AI写诗词对联相关网站链接：
+上面是诗三百·人工智能诗歌写作平台，从模型训练到前后端开发到优化推广的所有过程，如果大家觉得写得好，欢迎给个star，有什么不足的地方也欢迎给出宝贵的建议！
+
+### 相关网站：
 - 诗三百·人工智能诗歌写作平台：   https://www.aichpoem.com/  
 - 清华九歌·人工智能诗歌写作系统： http://jiuge.thunlp.org/jueju.html  
 - 华为乐府·人工智能作诗小程序：   微信公众号搜索 “乐府AI”  
@@ -662,7 +660,12 @@ export const checkKeys = (text) => {
 - 微软亚洲研究院·电脑对联系统：   https://duilian.msra.cn/app/couplet.aspx
 - 王斌·人工智能自动对对联系统：   https://ai.binwang.me/couplet/
 
+### 特别鸣谢：
+- [科学空间](https://spaces.ac.cn/)博主苏剑林老师开源[bert4keras](https://github.com/bojone/bert4keras/)
+- Werneror老师开源85万首[古诗词数据集](https://github.com/Werneror/Poetry)
+- 王斌老师开源70万首[对联数据集](https://github.com/wb14123/couplet-dataset)
+
 ### 合作建议：
-QQ:  540629297   
+QQ:  540629297
 E-mail: wangjiezju@163.com
 
