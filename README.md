@@ -743,6 +743,6 @@ export const checkKeys = (text) => {
 - 王斌老师开源70万首[对联数据集](https://github.com/wb14123/couplet-dataset)
 
 ### 合作建议：
-QQ:  540629297
+QQ:  540629297    
 E-mail: wangjiezju@163.com
 
