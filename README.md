@@ -622,7 +622,7 @@ npm install pinyin
 3、某些相近的字也需要过滤，如习和刁等；   
 4、国家核心领导人去过的某些地方，吃过的某些东西，说过的某些话，做过的某些事情及长的像的某些东西等等都要过滤，比如庆丰包子，蛤膜，维尼熊等等；      
 5、根据第三方开源的[敏感词库](https://github.com/fighting41love/funNLP/tree/master/data/%E6%95%8F%E6%84%9F%E8%AF%8D%E5%BA%93)进行过滤；  
-6、定期调用百度文本审核API标注日志中的样本，并用albert训练自己的敏感词二分类识别模型，不需要GPU，可以在云服务器的CPU上跑，每条文本大概6-7s左右，判别过的就可以放到Redis缓存里，不需要重复判断。具体模型训练方式可以参考苏老师bert4keras的[情感二分类例子](https://github.com/bojone/bert4keras/blob/master/examples/task_sentiment_albert.py)。
+6、定期调用百度文本审核API标注日志中的样本，并用albert训练自己的敏感词二分类识别模型，不需要GPU，可以在云服务器的CPU上跑，每条文本大概6-7ms左右，判别过的就可以放到Redis缓存里，不需要重复判断。具体模型训练方式可以参考苏老师bert4keras的[情感二分类例子](https://github.com/bojone/bert4keras/blob/master/examples/task_sentiment_albert.py)。
 
 上述前五条都可以在前端完成，如果校验不通过直接提示“您输入的主题无法作诗，请重新输入”，不需要增加服务端的压力，前端校验通过后，第六条需要在后端完成，再加一道保险。前端过滤代码参考如下：
 
