@@ -730,7 +730,7 @@ export const checkKeys = (text) => {
 上面是诗三百·人工智能诗歌写作平台，从模型训练到前后端开发到优化推广的所有过程，如果大家觉得写得好，欢迎给个star，有什么不足的地方也欢迎给出宝贵的建议！
 
 ### 相关网站：
-- 诗三百·人工智能诗歌写作平台：   https://www.aichpoem.com/  
+- 诗三百·人工智能诗歌写作平台：   https://www.aichpoem.net/  
 - 清华九歌·人工智能诗歌写作系统： http://jiuge.thunlp.org/jueju.html  
 - 华为乐府·人工智能作诗小程序：   微信公众号搜索 “乐府AI”  
 - 微软小冰·AI现代诗歌创作系统：   https://poem.msxiaobing.com/  
