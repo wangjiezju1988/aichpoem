@@ -749,7 +749,7 @@ export const checkKeys = (text) => {
 
 
 ### 合作建议：
-QQ:  540629297  (备注诗三百)
-微信： wangjiezju (备注诗三百)
-E-mail: wangjiezju@163.com
+- QQ: 540629297  (备注诗三百) 
+- 微信: wangjiezju (备注诗三百) 
+- E-mail: wangjiezju@163.com
 
