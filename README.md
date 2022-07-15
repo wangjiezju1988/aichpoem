@@ -744,7 +744,9 @@ export const checkKeys = (text) => {
 
 ### 友情赞助
 如果您觉得诗三百对您作诗和学习有帮助，欢迎通过打赏方式支持开发者，您的支持是开发者不断完善优化的巨大动力🙏🏻
-![avatar](http://www.aichpoem.net/static/img/wx_mcode.jpeg)
+![avatar]()
+
+<img style="width:300px;max-width:100%" src="[https://img-blog.csdn.net/20161028230559575](http://www.aichpoem.net/static/img/wx_mcode.jpeg)"/>
 
 
 ### 合作建议：
